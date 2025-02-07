@@ -185,3 +185,5 @@ fabric.properties
 .idea
 
 .sqlite3
+.db
+.log

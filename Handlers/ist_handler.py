@@ -1,14 +1,10 @@
-import requests
 from aiogram import Router, F, types
 from aiogram.enums import ParseMode
-from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message, CallbackQuery
-from yandex_gpt.yandex_gpt import YandexGPTMessage
-
+from aiogram.types import CallbackQuery
 from config_status import *
-from DataBase.users_db import db_conect, set_status
+from DataBase.users_db import db_conect, set_status, set_requ_count, get_requ_count
 import os
 from config_status import SET_STATUS_req1
 from dotenv import load_dotenv
@@ -48,7 +44,8 @@ async def process_topic(message: types.Message, state: FSMContext):
     await state.update_data(topic=topic)
     await message.answer(
         "Хорошо, тема: <b>{}</b>\n\n"
-        "Какой тип источников тебе нужен? (например: книги, статьи, научные статьи и т.п.)".format(topic)
+        "Какой тип источников тебе нужен? (например: книги, статьи, научные статьи и т.п.)".format(topic),
+        parse_mode=ParseMode.HTML
     )
     await state.set_state(SearchStates.waiting_for_doc_type)
 
@@ -93,7 +90,7 @@ async def process_max_year(message: types.Message, state: FSMContext):
         f"<b>Максимальный год:</b> {max_year if max_year else 'не указан'}\n\n"
         f"Подтвердить поиск? (да/нет)"
     )
-    await message.answer(text_preview)
+    await message.answer(text_preview, parse_mode=ParseMode.HTML)
     await state.set_state(SearchStates.waiting_for_confirmation)
 
 
@@ -109,7 +106,9 @@ async def process_confirmation(message: types.Message, state: FSMContext):
         max_year = data["max_year"]
         await message.answer("Собираю результаты...")
         response = await get_chatgpt_sources(topic, doc_type, min_year, max_year)
-        await message.answer(response, disable_web_page_preview=True)
+        await message.answer(response, disable_web_page_preview=True, parse_mode=ParseMode.MARKDOWN)
+        await set_requ_count(requ=int(await get_requ_count(user_id=message.from_user.id)) + 1,
+                             user_id=message.from_user.id)
         await set_status(user_id=message.from_user.id, status=SET_STATUS_DEFAULT)
         await state.clear()
     else:
@@ -131,6 +130,6 @@ async def get_chatgpt_sources(topic: str, doc_type: str, min_year: int, max_year
     ]
     try:
         return await yandex_gpt.get_async_completion(messages=prompt, temperature=0.6, max_tokens=1000, stream=False,
-                                              completion_url='https://llm.api.cloud.yandex.net/foundationModels/v1/completionAsync')
+                                                     completion_url='https://llm.api.cloud.yandex.net/foundationModels/v1/completionAsync')
     except Exception as e:
         return "Произошла ошибка при обращении к YandexGpt. Попробуйте ещё раз."

@@ -37,12 +37,12 @@ async def set_status(status, user_id) -> None:
     db.commit()
 
 
-async def get_botPassword(user_id) -> str:
+async def get_requ_count(user_id) -> str:
     cur.execute("SELECT requ FROM users WHERE user_id = ?", (user_id,))
     return cur.fetchone()[0]
 
 
-async def set_botPassword(requ, user_id) -> None:
+async def set_requ_count(requ, user_id) -> None:
     cur.execute("UPDATE users SET requ = ? WHERE user_id = ?", (requ, user_id,))
     db.commit()
 
