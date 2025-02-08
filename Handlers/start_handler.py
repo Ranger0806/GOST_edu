@@ -2,9 +2,9 @@ from aiogram import Router
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.types import Message
-from DataBase.users_db import db_conect, cheker_user, get_new_user
-from config_status import *
+from DataBase.users_db import db_conect, cheker_user, get_new_user, get_status
 from Keyboards.start_keybord import create_keybord
+from config_status import SET_STATUS_DEFAULT
 
 router = Router()
 
@@ -19,6 +19,8 @@ async def cmd_start(message: Message):
             f"*{message.from_user.first_name}, добрый день!\n*", parse_mode=ParseMode.MARKDOWN,
             reply_markup=create_keybord())
     else:
+        if await get_status(user_id=message.from_user.id) != SET_STATUS_DEFAULT:
+            await message.answer("Подождите ответа на запрос!")
         await message.answer(
             f"*{message.from_user.first_name}, добрый день!\nВы уже зарегистрированы.*", parse_mode=ParseMode.MARKDOWN,
             reply_markup=create_keybord())

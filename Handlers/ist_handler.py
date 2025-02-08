@@ -3,6 +3,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import CallbackQuery
+from Keyboards.start_keybord import create_keybord
 from config_status import *
 from DataBase.users_db import db_conect, set_status, set_requ_count, get_requ_count
 import os
@@ -33,7 +34,6 @@ class SearchStates(StatesGroup):
 async def info(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SearchStates.waiting_for_topic)
     await db_conect()
-    await set_status(user_id=callback.from_user.id, status=SET_STATUS_req1)
     await callback.message.answer("Введите тему для поиска:")
     await callback.answer("Запрос выполнен!")
 
@@ -97,8 +97,8 @@ async def process_max_year(message: types.Message, state: FSMContext):
 @router.message(SearchStates.waiting_for_confirmation)
 async def process_confirmation(message: types.Message, state: FSMContext):
     confirm_text = message.text.strip().lower()
-
     if confirm_text in ["да", "yes", "конечно", "ок", "lf"]:
+        await set_status(user_id=message.from_user.id, status=SET_STATUS_req1)
         data = await state.get_data()
         topic = data["topic"]
         doc_type = data["doc_type"]
@@ -110,9 +110,10 @@ async def process_confirmation(message: types.Message, state: FSMContext):
         await set_requ_count(requ=int(await get_requ_count(user_id=message.from_user.id)) + 1,
                              user_id=message.from_user.id)
         await set_status(user_id=message.from_user.id, status=SET_STATUS_DEFAULT)
+        await message.answer("Можете продолжать!", reply_markup=create_keybord())
         await state.clear()
     else:
-        await message.answer("Поиск отменён. Введите /start, чтобы начать заново.")
+        await message.answer("Поиск отменён.", reply_markup=create_keybord())
         await set_status(user_id=message.from_user.id, status=SET_STATUS_DEFAULT)
         await state.clear()
 
@@ -131,5 +132,6 @@ async def get_chatgpt_sources(topic: str, doc_type: str, min_year: int, max_year
     try:
         return await yandex_gpt.get_async_completion(messages=prompt, temperature=0.6, max_tokens=1000, stream=False,
                                                      completion_url='https://llm.api.cloud.yandex.net/foundationModels/v1/completionAsync')
+
     except Exception as e:
         return "Произошла ошибка при обращении к YandexGpt. Попробуйте ещё раз."
